@@ -1,0 +1,177 @@
+<?php
+	session_start();
+	require('functions.php');
+	function searchStudents($title) {
+		if(!check_login()) header("location:login.php");
+		else {
+			include 'config/globals.php';
+			$page = $_GET['p'];
+			$key = $_GET['q'];
+			//$queries = explode('&',$q);
+			$pagereg = '/^[\d]+$/';
+			$keyreg = '/^[\w]*$/';
+			if(preg_match($pagereg,$page)) {
+				include 'config/db.php';
+				include 'config/settings.php';
+				$dbname = $branchyear.'_Users';
+				$table = $branchyear.'_Students';
+				//if(!mysql_select_db($dbname)) die(mysql_error());
+				echo "<!DOCTYPE html>\n<html>\n";
+				display_headers($title);
+				echo "<body>\n";
+				menu();
+				$id_check=isset($_GET['id'])?"checked='checked'":'';
+				$name_check=isset($_GET['name'])?"checked='checked'":'';
+				echo <<< search_form
+					<div class="container" style="margin-top:-15px;"><br>
+						<div id="error"></div>
+						<div class="row">
+							<div class="span12">
+								<div class="well well-large" style="background:#FFF"> 
+									<div class="row">
+										<div id="step1" class="span8">     
+											<a><h5>Search students @ $globalbranch </h5></a>
+										</div>
+										<div id="page1" class="span3">
+											<a class="pull-right"><h6 >Page $page  </h6></a>
+										</div>
+									</div>
+									<div class="row">
+										<div class='span2'></div>
+										<div class=span7>
+											<div class="input-append"><br>
+												<form action="" method='GET' onsubmit = "return searchStudents();">
+													<input class="input-xxlarge" id="query" type="text" placeholder="Seach" name="q" value='$key'/>
+													<input type='submit' value="Search" class="btn btn-primary"  /><br>
+													<label class='checkbox inline'>Search by </label>
+													<label class="checkbox inline">
+														<input type="checkbox" id="ID" value="id" $id_check name='id'> Id
+													</label>
+													<label class="checkbox inline">
+													<input type="checkbox" id="NAME" value="name" $name_check name='name'> Name
+													</label>
+													<input type='hidden' value="1" class="btn btn-primary" name='p' style="visibility:hidden;" />
+												</form>
+											</div>
+										</div>
+									</div>
+search_form;
+				if(isset($_GET['q']) && strlen($_GET['q']) != 0 ) {
+					include 'config/globals.php';
+					include 'config/db.php';
+					include 'config/settings.php';
+					$dbname = $branchyear.'_Users';
+					$table = $branchyear.'_Students';
+					//if(!mysql_select_db($dbname)) die(mysql_error());
+					//echo $queries[0];
+						$keyword = htmlentities(mysql_real_escape_string($_GET['q']));
+					$id = isset($_GET['id'])?$_GET['id']:'';
+					$name = isset($_GET['name'])?$_GET['name']:'';
+					if(($id == null or $id == "") and $name == "name" )
+						$query = "SELECT Id,Name,Branch,Class,Gender FROM ".$table." WHERE Name like '%$keyword%' and (Position='S' or Position='CR');";
+					elseif (($name ==  null or $name == "") and $id == "id")
+						$query = "SELECT Id,Name,Branch,Class,Gender FROM ".$table." WHERE Id like '%$keyword%' and (Position='S' or Position='CR');";
+					elseif($name == "name" and $id == "id")
+						$query = "SELECT Id,Name,Branch,Class,Gender FROM ".$table." WHERE Id like '%$keyword%' or Name like '%$keyword%' and (Position='S' or Position='CR');";
+					$exec = mysql_query($query) or die(mysql_error());
+					$total = mysql_num_rows($exec);
+					if ($total > 0 ) {
+						echo <<< results
+									
+									<h6>Search results for &nbsp; : &nbsp;<span class="text-success"><b>"$keyword"</b> 
+										</span> &emsp; <small><span class="text-error" >$total record(s) Found</span></small> </h6>
+										<table class="table  table-hover table-bordered "  style="padding:0px;">
+											<thead>
+												<tr>
+													<th style="text-align:center;" class="span1"> ID #  </th>
+													<th style="text-align:center;" class="span3"> Name </th> 
+													<th style="text-align:center;" class="span1"> Class</th>
+													<th class="span1" style="text-align:center;" >Gender</th>
+												</tr>
+											</thead>
+											<tbody>
+results;
+						$page = $_GET['p'];
+						$prev = $page-1;
+						$next = $page+1;
+						$per_page = 10;
+						$slimit = ($page-1)*10;
+						$lastpage = ceil($total/$per_page);
+						if(($id == null or $id == "") and $name == "name" )
+							$query1 = "SELECT Id,Name,Branch,Class,Gender FROM ".$table." WHERE Name like '%$keyword%' and (Position='S' or Position='CR') LIMIT $slimit,$per_page;";
+						elseif (($name ==  null or $name == "") and $id == "id")
+							$query1 = "SELECT Id,Name,Branch,Class,Gender FROM ".$table." WHERE Id like '%$keyword%' and (Position='S' or Position='CR') LIMIT $slimit,$per_page;";	
+						elseif($name == "name" and $id == "id")
+							$query1 = "SELECT Id,Name,Branch,Class,Gender FROM ".$table." WHERE Id like '%$keyword%' or Name like '%$keyword%' and (Position='S' or Position='CR') LIMIT $slimit,$per_page;";
+						$exec1 = mysql_query($query1) or die(mysql_error());
+						$ppage = mysql_num_rows($exec1);
+						for($i=0;$i<$ppage;$i++) {
+							$record = mysql_fetch_array($exec1);
+							$lnk = "./students.php?".$record[0]."/sub";
+							echo <<< show
+								<tr onclick="document.location.href='$lnk';" style='cursor:pointer;'>
+									<td style="text-align:center;" class="span1">$record[0]</td>
+									<td class="span3">$record[1]</td> 
+									<td style="text-align:center;" class="span1">$record[2]$record[3]</td>
+									<td class="span1" style="text-align:center;" >$record[4]</td>
+								</tr>
+show;
+						}
+						echo <<< next
+							</tbody>
+							</table>			
+							
+							<div class="pagination pagination-centered">
+							<ul>
+next;
+					$lnk = "?q=".$key;
+					$lnk .=isset($_GET['id'])?"&id=id":'';
+					$lnk .=isset($_GET['name'])?"&name=name":'';
+					//$lnk .=$lnk1.$nk2;
+					//echo $lnk;
+					
+					if($page < ($total/10)+1) {
+						if($page != 1)
+							echo "<li><a href='".$lnk."&p=$prev'>&larr; Prev</a></li>";
+						else {echo "<li class='disabled'><a>&larr; Prevt</a></li>";}
+						
+						if($lastpage<=10){
+							for($i=1;$i<=$lastpage;$i++){
+								if($page == $i ) echo "<li class='active'><a href='".$lnk."&p=$i'><b class='text-error'> $i</b></a></li>";	
+									else echo "<li><a href='".$lnk."&p=$i'>$i</a></li>";			
+							}
+						}
+						else{
+								$init1 = ($page%10 == 0)?((floor($page/10)-1)*10+1):((floor($page/10)*10)+1) ;
+								// total no of records total pages pages range 
+								//echo $page/10; echo $lastpage/10;
+								$end1 = (floor(($page-1)/10) == floor($lastpage/10))?$lastpage:((ceil($page/10))*10);
+								for($i=$init1;$i<=$end1;$i++){
+									if($page == $i ) echo "<li class='active'><a href='".$lnk."&p=$i'><b class='text-error'> $i</b></a></li>";	
+									else echo "<li><a href='".$lnk."&p=$i'>$i</a></li>";			
+								}
+							}
+					if($page != $lastpage)
+						echo "<li><a href='".$lnk."&p=$next'>Next &rarr;</a></li>";
+					else {echo "<li class='disabled'><a>Next &rarr;</a></li>";}
+					}
+					
+					echo <<< next
+								</ul>
+								</div>
+								</div>
+								</div>
+next;
+					}
+					else echo "<center><p>No search results found.</p></center>"; 
+				}
+				else echo "<center><b><i>Specify search key word</i></b></center>";
+				echo "</div>";
+				display_footer();
+				echo "\n</div></body>\n</html>";
+			}
+			else echo "Error : Invalid syntax found in URL<br>";
+		}
+	}
+	searchStudents("Attendance Portal - Search Students");
+?>

@@ -1,0 +1,31 @@
+<?php
+session_start();
+ob_start();
+require_once "AllinOne.php";
+if(!IsLoggedIn::Stat()){
+    header("Location:login.php");
+}
+else{
+    $error = 0;
+    $se=new Session();
+    $uid=$se->decrypt($_SESSION["id"]);
+    $ro=new GetRole();
+    $role=$ro->Role($uid);
+    if($role!="PanMember"){
+		echo "You are not authorised to take a print out...";
+    }
+    else{
+	$date = date('h-M-Y');
+	if(isset($_POST["Title"])){
+		$title = $_POST['Title'];
+		$name=str_replace(" ","",$title."_".$date.".xls");
+		header("Content-Type: application/vnd.ms-excel");
+		header("Content-disposition: attachment; filename=$name;");
+		echo "<table>".$_POST["sheet"]."</table>";
+	}
+	else{
+		echo "Error: Nothing POSTed to generate Excel Sheet..";
+	}
+    }
+}
+?>
